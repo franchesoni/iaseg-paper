@@ -1,11 +1,15 @@
+import os
 import tqdm
 from pathlib import Path
 from PIL import Image
 import numpy as np
 from segmentation_datasets.sbd import get_sbd_dataset
+from config import DATA_DIR
 
 def generate_sbd_per_label(input_dir, target_dir):
+  print('getting dataset...')
   sbd_dataset = get_sbd_dataset()
+  print('creating dataset...')
   targetDir = Path(target_dir)
   inputDir = Path(input_dir)
   targetDir.mkdir(exist_ok=True, parents=True)
@@ -19,4 +23,4 @@ def generate_sbd_per_label(input_dir, target_dir):
 
 
 if __name__ == "__main__":
-  generate_sbd_per_label('data/perlabel_sbd/inputs', 'data/perlabel_sbd/targets')
+  generate_sbd_per_label(os.path.join(DATA_DIR , 'perlabel_sbd/inputs'), os.path.join(DATA_DIR , 'perlabel_sbd/targets'))
