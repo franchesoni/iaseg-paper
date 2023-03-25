@@ -1,0 +1,7 @@
+.vscode/
+ex/
+__pycache__/
+data/
+weights/
+runs/
+checkpoints/
