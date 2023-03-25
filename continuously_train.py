@@ -12,6 +12,8 @@ import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 from torch.utils.tensorboard import SummaryWriter
 
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 def seed_everything(seed=42):
     random.seed(seed)
     np.random.seed(seed)
@@ -79,7 +81,7 @@ def launch_continuously_train(data_dir, label):
     in_channels = 3,
     classes = 1,
     activation = "sigmoid",
-  )
+  ).to(DEVICE)
   # model = smp.Unet(
   #   encoder_name = "tu-hrnet_w18",
   #   encoder_weights = "imagenet",
@@ -117,6 +119,7 @@ def launch_continuously_train(data_dir, label):
 
     with tqdm.tqdm(enumerate(dataloader)) as pbar:
       for i, (img, target) in pbar:
+        img, target = img.to(DEVICE), target.to(DEVICE)
 
         times['loading_data'] += time.time() - last
         last = time.time()
