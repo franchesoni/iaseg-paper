@@ -1,3 +1,4 @@
+import os
 import datetime
 import sys
 from pathlib import Path
@@ -10,6 +11,7 @@ import torch
 from segmentation_datasets.per_class_dataset import PerClassDataset
 from app.ClickSEG.clean_inference import load_controller
 from app.ClickSEG.isegm.inference.clicker import Clicker
+from config import DATA_DIR
 
 def get_last_ckpt_path(ckpt_path):
   """Get the path of the last checkpoint in a directory"""
@@ -98,4 +100,7 @@ def annotate_data(input_dir, target_dir, annotations_dir, ckpt_path=Path('checkp
 if __name__ == "__main__":
   # get label as first argumetn of call
   label = int(sys.argv[1])
-  annotate_data('data/perlabel_sbd/inputs', 'data/perlabel_sbd/targets', 'data/perlabel_sbd/annotations', label=label, max_delay=4)
+  input_dir = os.path.join(DATA_DIR, 'perlabel_sbd/inputs')
+  target_dir = os.path.join(DATA_DIR, 'perlabel_sbd/targets')
+  annotations_dir = os.path.join(DATA_DIR, 'perlabel_sbd/annotations')
+  annotate_data(input_dir, target_dir, annotations_dir, label=label, max_delay=4)
