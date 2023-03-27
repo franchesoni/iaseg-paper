@@ -1,6 +1,7 @@
 LABEL=4
 echo "Label $LABEL"
-rm -rf data/perlabel_sbd/annotations
+rm -rf checkpoints
+rm -rf /home/franchesoni/disk/data/iaseg-paper/perlabel_sbd/annotations
 # run the robot, save the terminal output to robot.log and the process number for later
 python -u annotate_data.py $LABEL 2>&1 | tee robot.log & robot_pid=$!;
 echo "started robot ${robot_pid}"
