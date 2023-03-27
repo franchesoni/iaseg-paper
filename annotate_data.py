@@ -39,7 +39,9 @@ def mytorchload(ckpt_path):
     lock_file_path = ckpt_path + ".lock"
     if os.path.exists(lock_file_path):
         time.sleep(0.5)  # this is more than enough
-    return torch.load(ckpt_path)
+    with open(ckpt_path, "rb") as f:  # chatgpt recommends
+        checkpoint = torch.load(f)
+    return checkpoint
 
 
 def get_updated_model(ckpt_path, model=None):
