@@ -1,3 +1,4 @@
+import os
 import sys
 import random
 from pathlib import Path
@@ -11,6 +12,8 @@ import torchvision.transforms
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 from torch.utils.tensorboard import SummaryWriter
+
+from config import DATA_DIR
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -165,6 +168,7 @@ def launch_continuously_train(data_dir, label):
 
 if __name__ == '__main__':
   label = int(sys.argv[1])
-  launch_continuously_train('data/perlabel_sbd', label)
+  data_dir = os.path.join(DATA_DIR, 'perlabel_sbd')
+  launch_continuously_train(data_dir, label)
 
   
