@@ -1,3 +1,4 @@
+import fcntl
 import os
 import sys
 import random
@@ -31,6 +32,14 @@ def debug_id(x, **kwargs):
     breakpoint()
     return x
 
+
+def mytorchsave(checkpoint, ckpt_path):
+    with open(ckpt_path, "wb") as f:
+        # Acquire an exclusive lock on the file
+        fcntl.flock(f, fcntl.LOCK_EX)
+        torch.save(checkpoint, f)
+        # Release the lock on the file
+        fcntl.flock(f, fcntl.LOCK_UN)
 
 class ContinuousDataset(torch.utils.data.Dataset):
     def __init__(self, input_dir, annotations_dir, label, min_length=32):
@@ -203,7 +212,7 @@ def launch_continuously_train(data_dir, label):
             last = time.time()
 
         print(f"finished epoch {epoch} with times {times}")
-        torch.save(model, f"checkpoints/model_{str(epoch).zfill(4)}.pth")
+        mytorchsave(model, f"checkpoints/model_{str(epoch).zfill(4)}.pth")
 
         times["model_saving"] += time.time() - last
         last = time.time()

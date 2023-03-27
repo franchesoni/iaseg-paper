@@ -1,3 +1,4 @@
+import fcntl
 import os
 import datetime
 import sys
@@ -35,13 +36,13 @@ def IoU(mask1, mask2):
 
 
 def mytorchload(ckpt_path):
-    """Just like torch.load but checking that the file is ready"""
-    lock_file_path = Path(str(ckpt_path) + ".lock")
-    if os.path.exists(lock_file_path):
-        time.sleep(0.5)  # this is more than enough
-    with open(ckpt_path, "rb") as f:  # chatgpt recommends
+    with open(ckpt_path, "rb") as f:
+        # Acquire a shared lock on the file
+        fcntl.flock(f, fcntl.LOCK_SH)
         checkpoint = torch.load(f)
-    return checkpoint
+        # Release the lock on the file
+        fcntl.flock(f, fcntl.LOCK_UN)
+        return checkpoint
 
 
 def get_updated_model(ckpt_path, model=None):
