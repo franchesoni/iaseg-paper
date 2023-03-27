@@ -114,9 +114,11 @@ def launch_continuously_train(data_dir, label):
   last = st
   times = {'dataloader': 0, 'loading_data': 0, 'forward': 0, 'backward': 0, 'logging': 0, 'image_logging': 0, 'model_saving': 0}
   iterations = 0
-  for epoch in range(10):
+  for epoch in range(100000000):
     dataset.update_file_list()  # the reason why to use plain pytorch
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=True, num_workers=8, drop_last=True)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=True, num_workers=8, drop_last=True,
+            pin_memory=True, prefetch_factor=4,
+            )
 
     times['dataloader'] += time.time() - last
     last = time.time()
