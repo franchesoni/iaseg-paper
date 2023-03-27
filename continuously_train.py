@@ -54,24 +54,14 @@ class ContinuousDataset(torch.utils.data.Dataset):
         self.aug = A.Compose(
             [  # we could add more augmentations here
                 # A.Lambda(image=debug_id, mask=debug_id),
-                A.OneOf(
-                    [
-                        A.PadIfNeeded(min_height=480, min_width=480),
-                        A.PadIfNeeded(min_height=960, min_width=960, p=0.2),
-                    ],
-                    p=1,
-                ),
+                A.PadIfNeeded(min_height=480, min_width=480),
                 A.RandomSizedCrop(
                     min_max_height=(88, 480), height=480, width=480
                 ),  # sbd params
+                A.Affine(scale=(0.7, 1.3), rotate=(0, 180),
+                         translate_percent=(-0.3, 0.3), shear=(-30, 30), p=0.5),
                 A.HorizontalFlip(p=0.5),
-                A.OneOf(
-                    [A.ElasticTransform(), A.GridDistortion(), A.OpticalDistortion()],
-                    p=0.3,
-                ),
-                A.OneOf(
-                    [A.CLAHE(), A.RandomBrightnessContrast(), A.RandomGamma()], p=0.3
-                ),
+                A.RandomBrightnessContrast(p=0.2),
                 A.Normalize(),
                 ToTensorV2(),
             ]
