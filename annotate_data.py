@@ -36,7 +36,7 @@ def IoU(mask1, mask2):
 
 def mytorchload(ckpt_path):
     """Just like torch.load but checking that the file is ready"""
-    lock_file_path = ckpt_path + ".lock"
+    lock_file_path = Path(str(ckpt_path) + ".lock")
     if os.path.exists(lock_file_path):
         time.sleep(0.5)  # this is more than enough
     with open(ckpt_path, "rb") as f:  # chatgpt recommends
