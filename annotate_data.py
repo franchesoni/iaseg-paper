@@ -34,11 +34,13 @@ def IoU(mask1, mask2):
 def get_updated_model(ckpt_path, model=None):
   """Reload the model if checkpoint has been updated"""
   assert isinstance(ckpt_path, Path)
-  last_ckpt_path = get_last_ckpt_path(ckpt_path)
-  need_update = last_ckpt_path != ckpt_path or model is None
-  if need_update and not last_ckpt_path.is_dir():
-    return torch.load(last_ckpt_path), last_ckpt_path
-  return model, last_ckpt_path
+  if ckpt_path.exists():
+      last_ckpt_path = get_last_ckpt_path(ckpt_path)
+      need_update = last_ckpt_path != ckpt_path or model is None
+      if need_update and not last_ckpt_path.is_dir():
+        return torch.load(last_ckpt_path), last_ckpt_path
+      return model, last_ckpt_path
+  return model, ckpt_path
 
 def annotate_img(img, preannotation, target, max_delay, threshold=0.9):
   external_clicker = Clicker(gt_mask=np.array(target))
