@@ -106,6 +106,7 @@ def launch_continuously_train(data_dir, label):
     if len(dataset) < 32:
       raise RuntimeError('Waited too long for annotations to start training')
   print('Starting training...')
+  Path('checkpoints').mkdir(exist_ok=True)
 
   writer = SummaryWriter()
 
