@@ -1,4 +1,6 @@
 .vscode/
+*.png
+*.log
 ex/
 __pycache__/
 data/
