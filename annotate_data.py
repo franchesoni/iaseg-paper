@@ -31,6 +31,13 @@ def IoU(mask1, mask2):
   union = np.logical_or(mask1, mask2)
   return np.sum(intersection) / np.sum(union)
 
+def mytorchload(ckpt_path):
+    """Just like torch.load but checking that the file is ready"""
+    lock_file_path = ckpt_path + '.lock'
+    if os.path.exists(lock_file_path):
+        time.sleep(0.5)  # this is more than enough
+    return torch.load(ckpt_path)
+
 def get_updated_model(ckpt_path, model=None):
   """Reload the model if checkpoint has been updated"""
   assert isinstance(ckpt_path, Path)
@@ -38,7 +45,7 @@ def get_updated_model(ckpt_path, model=None):
       last_ckpt_path = get_last_ckpt_path(ckpt_path)
       need_update = last_ckpt_path != ckpt_path or model is None
       if need_update and not last_ckpt_path.is_dir():
-        return torch.load(last_ckpt_path), last_ckpt_path
+        return mytorchload(last_ckpt_path), last_ckpt_path
       return model, last_ckpt_path
   return model, ckpt_path
 
@@ -90,9 +97,10 @@ def annotate_data(input_dir, target_dir, annotations_dir, ckpt_path=Path('checkp
     # annotate the image
     preannotation = None
     if model is not None:
-      preannotation = model(torchvision.transforms.functional.resize(totensor(img), (480, 480), antialias=True).unsqueeze(0))
+      device = next(model.decoder.parameters()).device
+      preannotation = model(torchvision.transforms.functional.resize(totensor(img).to(device), (480, 480), antialias=True).unsqueeze(0))
       # resize back to img size
-      preannotation = torchvision.transforms.functional.resize(preannotation.squeeze(0), (img.height, img.width), antialias=True).detach().numpy()[0]
+      preannotation = torchvision.transforms.functional.resize(preannotation.squeeze(0), (img.height, img.width), antialias=True).detach().cpu().numpy()[0]
     annotation = annotate_img(img, preannotation, target, max_delay)
     # save the annotation
     Image.fromarray(annotation).save(Path(annotations_dir) / f"annotation_{str(i).zfill(6)}_{str(label).zfill(2)}.png")
