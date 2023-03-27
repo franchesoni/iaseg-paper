@@ -1,3 +1,4 @@
+import psutil
 import fcntl
 import os
 import sys
@@ -16,6 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from config import DATA_DIR
 
+num_cpus = len(psutil.Process().cpu_affinity())
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -165,12 +167,12 @@ def launch_continuously_train(data_dir, label):
         dataset.update_file_list()  # the reason why to use plain pytorch
         dataloader = torch.utils.data.DataLoader(
             dataset,
-            batch_size=8,
+            batch_size=32,
             shuffle=True,
-            num_workers=8,
+            num_workers=num_cpus,
             drop_last=True,
             pin_memory=True,
-            prefetch_factor=4,
+            # prefetch_factor=4,
         )
 
         times["dataloader"] += time.time() - last
