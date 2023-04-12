@@ -1,6 +1,19 @@
+# To-do
+- reevaluate with actual image size
+
 # Dataset preparation 
 - download NDD20 by running `bash segmentation_datasets/ndd20.sh` (change the path to your datadir in that file)
 
+# Experiments
+- train `python -m supervised_baseline`  (comment out what's needed)
+- evaluate `python -m supervised_baseline`  (comment out what's needed)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃        Test metric        ┃       DataLoader 0        ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│         test_loss         │   0.014407549984753132    │
+│         test_mae          │     4.05710506439209      │
+│         test_mse          │     17.89949607849121     │
+└───────────────────────────┴───────────────────────────┘
 
 # To set up:
 - Create `app/` dir
