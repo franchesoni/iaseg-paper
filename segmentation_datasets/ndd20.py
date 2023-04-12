@@ -3,6 +3,7 @@ import shutil
 import json
 from pathlib import Path
 import numpy as np
+import torchvision
 import cv2
 from PIL import Image
 import tqdm
@@ -10,8 +11,17 @@ import tqdm
 def tonp_transform(img, mask):
     return np.array(img), np.array(mask)
 
+transforms = torchvision.transforms.Compose([
+    torchvision.transforms.Resize((448, 448)),
+    torchvision.transforms.ToTensor(),
+])
+def img_mask_transform(img, mask):
+    img = transforms(img)
+    mask = transforms(mask)
+    return img, mask
+
 class NDD20Dataset(Dataset):
-    def __init__(self, root_dir, subdataset='below', transform=None, reset=False, split='train'):
+    def __init__(self, root_dir, subdataset='below', transform=img_mask_transform, reset=False, split='train'):
         assert split in ['train', 'test'], "split must be 'train' or 'test'"
         assert subdataset.upper() in ['ABOVE', 'BELOW'], "subdataset must be 'above' or 'below'"
         self.subdataset = subdataset.upper()
