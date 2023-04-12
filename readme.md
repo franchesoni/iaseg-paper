@@ -1,3 +1,7 @@
+# Dataset preparation 
+- download NDD20 by running `bash segmentation_datasets/ndd20.sh` (change the path to your datadir in that file)
+
+
 # To set up:
 - Create `app/` dir
 - `git clone https://github.com/franchesoni/clickseg_inference.git` inside `app/` dir
