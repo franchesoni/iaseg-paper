@@ -7,3 +7,4 @@ data/
 weights/
 runs/
 checkpoints/
+lightning_logs/
