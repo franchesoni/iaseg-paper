@@ -253,7 +253,8 @@ class NDD20DataModule(pl.LightningDataModule):
     def on_after_batch_transfer(self, batch, dataloader_idx):
         if self.trainer.training:
             img, mask = self.train_transforms(batch["input"], batch["target"])
-        return {"input": img, "target": mask, "hw": batch["hw"]}
+            batch = {"input": img, "target": mask, "hw": batch["hw"]}
+        return batch
 
     def train_dataloader(self):
         return DataLoader(

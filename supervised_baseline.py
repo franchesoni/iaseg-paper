@@ -5,6 +5,7 @@ import torchvision
 import torch
 
 from segmentation_datasets.ndd20 import NDD20DataModule
+from segmentation_evaluator import reg_metrics, get_average_results
 from config import DATA_DIR, SEED
 
 
@@ -24,7 +25,20 @@ class Segmentator(pl.LightningModule):
         x, y, hw = batch["input"], batch["target"], batch["hw"]
         y_hat = self.model(x)["out"]
         loss = self.loss(y_hat, y, reduction="mean")
-        self.log("train_loss", loss)
+        self.log("train/loss", loss)
+        for metric_name in reg_metrics:
+            self.log(f"train/{metric_name}", reg_metrics[metric_name](y_hat, y))
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y, hw = batch["input"], batch["target"], batch["hw"]
+        y_hat = self.model(x)["out"]
+        loss = self.loss(y_hat, y, reduction="mean")
+        self.log("val/loss", loss)
+        for metric_name in reg_metrics:
+            self.log(f"val/{metric_name}", reg_metrics[metric_name](y_hat, y))
+        cls_res = get_average_results(y_hat=torch.sigmoid(y_hat), y=y, n_thresholds=10)
+        self.log_dict({f"val/{key}":value for key, value in cls_res.items()}, prog_bar=True)
         return loss
 
     def configure_optimizers(self):
@@ -53,10 +67,11 @@ def run_segmentator(mode='train'):
         segmentator = Segmentator()
         trainer = pl.Trainer(
             log_every_n_steps=1,
-            accelerator="gpu",
+            val_check_interval=1,
+            # accelerator="cpu",
             max_epochs=24,
             fast_dev_run=False,
-            devices=[1],
+            # devices=[1],
             profiler="simple",
         )
         if mode == 'train':
@@ -99,4 +114,4 @@ def run_segmentator(mode='train'):
 # command to run the script and log output of terminal to a file
 # python supervised_baseline.py | tee supervised_baseline.log
 if __name__ == "__main__":
-    run_segmentator('generate')
+    run_segmentator('train')
