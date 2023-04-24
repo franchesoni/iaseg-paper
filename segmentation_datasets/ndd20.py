@@ -1,3 +1,4 @@
+import os
 from torch.utils.data import Dataset
 import shutil
 import json
@@ -7,11 +8,26 @@ import torchvision
 import kornia as K
 import cv2
 from PIL import Image
+import pytorch_lightning as pl
 import tqdm
+from torch.utils.data import DataLoader
+from kornia.constants import DataKey, Resample
 
 
 def tonp_transform(img, mask):
     return np.array(img), np.array(mask)
+
+
+totensor = torchvision.transforms.ToTensor()
+to_01 = lambda x: (x - x.min()) / (x.max() - x.min()) if x.max() != x.min() else x * 0
+
+
+def default_dataset_transform(img, mask):
+    img = img.resize((896, 896))
+    mask = mask.resize((896, 896))
+    img, mask = totensor(img), totensor(mask)
+    img, mask = to_01(img), to_01(mask)
+    return img, mask
 
 
 def get_img_mask_transform(transform):
@@ -23,38 +39,23 @@ def get_img_mask_transform(transform):
     return img_mask_transform
 
 
-train_transforms = K.augmentation.AugmentationSequential(
-    K.augmentation.LongestMaxSize(896),
-    K.augmentation.RandomResizedCrop((448, 448), same_on_batch=True),
-    K.augmentation.RandomHorizontalFlip(p=0.5),
-    K.augmentation.RandomVerticalFlip(p=0.5),
-    K.augmentation.RandomRotation(degrees=180, p=0.5),
-    K.augmentation.ColorJiggle(p=0.5),
-)
-
-val_transforms = torchvision.transforms.Compose(
-    [
-        get_img_mask_transform(torchvision.transforms.ToTensor()),
-    ]
-)
-
-
 class NDD20Dataset(Dataset):
     def __init__(
-        self, root_dir, subdataset="below", transform=None, reset=False, split="train"
+        self,
+        root_dir,
+        subdataset="below",
+        transforms=default_dataset_transform,
+        reset=False,
+        split="train",
     ):
-        assert split in ["train", "test"], "split must be 'train' or 'test'"
+        assert split in ["train", "val", "test", "all"], "split must be 'train' or 'test' or 'val' or 'all'"
         assert subdataset.upper() in [
             "ABOVE",
             "BELOW",
         ], "subdataset must be 'above' or 'below'"
         self.subdataset = subdataset.upper()
         self.root_dir = Path(root_dir)
-        self.transform = transform
-        if split == "train":
-            self.transform = train_transforms
-        elif split == "test":
-            self.transform = val_transforms
+        self.transforms = transforms
         self.imgs_dir = self.root_dir / self.subdataset
         self.masks_dir = self.root_dir / f"{self.subdataset}_MASKS"
         self.split = split
@@ -68,13 +69,19 @@ class NDD20Dataset(Dataset):
             self.generate_masks(annotations, full_annotation_keys)
         self.all_masks = sorted(self.masks_dir.glob("*.png"))
         self.all_imgs = sorted(self.imgs_dir.glob("*.jpg"))
-        self.train_masks = self.all_masks[: int(len(self.all_masks) * 0.8)]
-        self.train_imgs = self.all_imgs[: int(len(self.all_imgs) * 0.8)]
+        trainval_masks = self.all_masks[: int(len(self.all_masks) * 0.8)]
+        trainval_imgs = self.all_imgs[: int(len(self.all_imgs) * 0.8)]
         self.test_masks = self.all_masks[int(len(self.all_masks) * 0.8) :]
         self.test_imgs = self.all_imgs[int(len(self.all_imgs) * 0.8) :]
-        if split == "train":
-            self.imgs = self.train_imgs
-            self.masks = self.train_masks
+        if split == "all":
+            self.imgs = self.all_imgs
+            self.masks = self.all_masks
+        elif split == "train":
+            self.imgs = trainval_imgs[: int(len(trainval_imgs) * 0.8)]
+            self.masks = trainval_masks[: int(len(trainval_masks) * 0.8)]
+        elif split == "val":
+            self.imgs = trainval_imgs[int(len(trainval_imgs) * 0.8) :]
+            self.masks = trainval_masks[int(len(trainval_masks) * 0.8) :]
         elif split == "test":
             self.imgs = self.test_imgs
             self.masks = self.test_masks
@@ -103,12 +110,17 @@ class NDD20Dataset(Dataset):
     def __len__(self):
         return len(self.imgs)
 
-    def __getitem__(self, idx):
+    def get_img_mask(self, idx):
         img = Image.open(self.imgs[idx])
         mask = Image.open(self.masks[idx])
-        if self.transform:
-            img, mask = self.transform(img, mask)
         return img, mask
+
+    def __getitem__(self, idx):
+        img, mask = self.get_img_mask(idx)
+        H, W = img.height, img.width
+        if self.transforms:
+            img, mask = self.transforms(img, mask)
+        return {"input": img, "target": mask, "hw": (H, W)}
 
     def convert_to_mmlab(self):
         """Converts dataset to mmlab format"""
@@ -166,6 +178,122 @@ class NDD20Dataset(Dataset):
         self.check_default_format()
 
 
+class NDD20DataModule(pl.LightningDataModule):
+    def __init__(self, data_dir: str = "./", batch_size=42):
+        super().__init__()
+        self.data_dir = data_dir
+        self.default_transform = default_dataset_transform
+        self.train_transforms = K.augmentation.AugmentationSequential(
+            K.augmentation.RandomResizedCrop((448, 448), same_on_batch=True, align_corners=False),
+            K.augmentation.RandomHorizontalFlip(p=0.5, same_on_batch=True),
+            K.augmentation.RandomVerticalFlip(p=0.5, same_on_batch=True),
+            K.augmentation.RandomRotation(degrees=180, p=0.5, same_on_batch=True),
+            K.augmentation.ColorJiggle(p=0.5, same_on_batch=True),
+            data_keys=["input", "mask"],
+            extra_args={DataKey.MASK: dict(resample=Resample.BILINEAR, align_corners=None)}
+        )
+        self.batch_size = batch_size
+
+    def prepare_data(self):
+        # read `DATASETS_DIR` variable from `segmentation_datasets/ndd20.sh`
+        with open("segmentation_datasets/ndd20.sh", "r") as f:
+            lines = f.readlines()
+            for line in lines:
+                if line.startswith("DATASETS_DIR"):
+                    datasets_dir = line.split("=")[1].strip()[1:-1]  # ignore quotes
+                    break
+        if (Path(datasets_dir) / "NDD20").exists():
+            print("NDD20 dataset already downloaded")
+            return
+        else:
+            # confirm path in file is ok
+            input("Hit any key if you've already changed the path in `ndd20.sh`")
+            # download by running bash ndd20.sh
+            bashCommand = "bash segmentation_datasets/ndd20.sh"
+            import subprocess
+
+            process = subprocess.Popen(
+                bashCommand.split(), stdout=subprocess.PIPE, cwd="."
+            )
+
+    def setup(self, stage: str):
+        # Assign train/val datasets for use in dataloaders
+        if stage == "fit":
+            self.ndd20_train = NDD20Dataset(
+                self.data_dir,
+                subdataset="below",
+                transforms=self.default_transform,
+                split="train",
+                reset=False,
+            )
+            self.ndd20_val = NDD20Dataset(
+                self.data_dir,
+                subdataset="below",
+                transforms=self.default_transform,
+                split="val",
+                reset=False,
+            )
+        if stage == "test":
+            self.ndd20_test = NDD20Dataset(
+                self.data_dir,
+                subdataset="below",
+                transforms=self.default_transform,
+                split="test",
+                reset=False,
+            )
+        if stage == "predict":
+            self.ndd20_predict = NDD20Dataset(
+                self.data_dir,
+                subdataset="below",
+                transforms=self.default_transform,
+                split="test",
+                reset=False,
+            )
+
+    def on_after_batch_transfer(self, batch, dataloader_idx):
+        if self.trainer.training:
+            img, mask = self.train_transforms(batch["input"], batch["target"])
+        return {"input": img, "target": mask, "hw": batch["hw"]}
+
+    def train_dataloader(self):
+        return DataLoader(
+            self.ndd20_train,
+            batch_size=self.batch_size,
+            shuffle=True,
+            drop_last=True,
+            pin_memory=True,
+            num_workers=os.cpu_count(),
+        )
+
+    def val_dataloader(self):
+        return DataLoader(
+            self.ndd20_val,
+            batch_size=self.batch_size,
+            shuffle=False,
+            drop_last=True,
+            pin_memory=True,
+            num_workers=os.cpu_count(),
+        )
+
+    def test_dataloader(self):
+        return DataLoader(
+            self.ndd20_test,
+            batch_size=self.batch_size,
+            shuffle=False,
+            drop_last=False,
+            num_workers=os.cpu_count(),
+        )
+
+    def predict_dataloader(self):
+        return DataLoader(
+            self.ndd20_predict,
+            batch_size=self.batch_size,
+            shuffle=False,
+            drop_last=False,
+            num_workers=os.cpu_count(),
+        )
+
+
 def experimentation():
     import matplotlib.pyplot as plt
 
@@ -206,13 +334,10 @@ def visualize_first_images():
     dataset = NDD20Dataset(
         Path("/home/franchesoni/adisk/datasets/NDD20"), subdataset="below", reset=False
     )
-    print(len(dataset))
-    for ind, (img, mask) in enumerate(dataset):
-        if not isinstance(img, np.ndarray):
-            img, mask = tonp_transform(img, mask)
-        print(ind, img.shape, mask.shape)
-        Image.fromarray(img).save(f"img_{ind}.png")
-        Image.fromarray(mask).save(f"mask_{ind}.png")
+    for ind in range(len(dataset)):
+        img, mask = dataset.get_img_mask(ind)
+        img.save(f"img_{ind}.png")
+        mask.save(f"mask_{ind}.png")
         if ind > 10:
             break
 
