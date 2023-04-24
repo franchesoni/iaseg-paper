@@ -1,4 +1,5 @@
 from torch import log, nanmean
+import torch
 from torchvision.transforms import ToTensor
 import matplotlib.pyplot as plt
 import tqdm
@@ -80,17 +81,21 @@ def get_results_for_thresholds(y_hat, y, n_thresholds=10):
     return results
 
 def get_average_results(y_hat, y, n_thresholds=10):
+    y = y > 0  # convert to bool if needed
     results = get_results_for_thresholds(y_hat, y, n_thresholds)
     return {k: np.mean([v[k] for v in results.values()]) for k in results[0].keys()}
 
 
 
-metrics = {
+reg_metrics = {
     'mse': mseloss,
     'mae': l1loss,
     'focal_loss': focal_loss,
+}
+cls_metrics = {
     'classification_metrics': get_average_results,
 }
+metrics = {**reg_metrics, **cls_metrics}
 
 def evaluate_predictions(pred_paths, gt_paths):
     assert len(pred_paths) == len(gt_paths)
@@ -211,6 +216,7 @@ if __name__ == "__main__":
     visualize_results_cross_correlation(results)
     perthreshresults = evaluate_ndd20_predictions(per_threshold=True)
     best_thresh = visualize_results_precrecspec(perthreshresults)
+    print(f"Best threshold: {best_thresh}")
     mean_mae = np.mean([result['mae'] for result in results])
     print(f"Mean MAE: {mean_mae:.3f}")
     mean_best_iou = np.mean([perthreshresult[best_thresh]['iou'] for perthreshresult in perthreshresults])
