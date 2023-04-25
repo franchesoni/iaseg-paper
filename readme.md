@@ -1,3 +1,12 @@
+# setup
+- change path in `config.py` by selecting correct `config_name` and run `python config.py`
+- download dataset using `bash segmentation_datasets/ndd20.sh`
+- download and install SAM
+    - `git clone https://github.com/facebookresearch/segment-anything.git`
+    - `cd segment-anything; pip install -e .`
+
+
+
 # What this repo contains
 ## Introduction
 The idea is to design a method to annotate a binary image segmentation dataset as fast as possible.
