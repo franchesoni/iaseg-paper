@@ -12,7 +12,9 @@ import pytorch_lightning as pl
 import tqdm
 from torch.utils.data import DataLoader
 from kornia.constants import DataKey, Resample
-
+import psutil
+def cpu_count():
+    return len(psutil.Process().cpu_affinity())
 
 def tonp_transform(img, mask):
     return np.array(img), np.array(mask)
@@ -263,7 +265,7 @@ class NDD20DataModule(pl.LightningDataModule):
             shuffle=True,
             drop_last=True,
             pin_memory=True,
-            num_workers=os.cpu_count(),
+            num_workers=cpu_count(),
         )
 
     def val_dataloader(self):
@@ -273,7 +275,7 @@ class NDD20DataModule(pl.LightningDataModule):
             shuffle=False,
             drop_last=True,
             pin_memory=True,
-            num_workers=os.cpu_count(),
+            num_workers=cpu_count(),
         )
 
     def test_dataloader(self):
@@ -282,7 +284,7 @@ class NDD20DataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             shuffle=False,
             drop_last=False,
-            num_workers=os.cpu_count(),
+            num_workers=cpu_count(),
         )
 
     def predict_dataloader(self):
@@ -291,7 +293,7 @@ class NDD20DataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             shuffle=False,
             drop_last=False,
-            num_workers=os.cpu_count(),
+            num_workers=cpu_count(),
         )
 
 
