@@ -92,6 +92,7 @@ class NDD20Dataset(Dataset):
         for ann_key in tqdm.tqdm(annotation_keys):
             img_name = annotations[ann_key]["filename"]
             img = np.array(Image.open(self.imgs_dir / img_name))
+            mask = np.zeros_like(img)
             for region in annotations[ann_key]["regions"]:
                 polyline = region["shape_attributes"]
                 assert (
@@ -101,11 +102,10 @@ class NDD20Dataset(Dataset):
                     (x, y)
                     for x, y in zip(polyline["all_points_x"], polyline["all_points_y"])
                 ]
-                mask = np.zeros_like(img)
                 cv2.drawContours(mask, [np.array(points)], 0, (255, 255, 255), -1)
-                mask = 0 < mask[..., 0]  # boolean mask
-                mask = Image.fromarray(mask)
-                mask.save(self.masks_dir / f"mask_{img_name.split('.')[0]}.png")
+            mask = 0 < mask[..., 0]  # boolean mask
+            mask = Image.fromarray(mask)
+            mask.save(self.masks_dir / f"mask_{img_name.split('.')[0]}.png")
 
     def __len__(self):
         return len(self.imgs)
@@ -335,7 +335,8 @@ def visualize_first_images():
     dataset = NDD20Dataset(
         Path("/home/franchesoni/adisk/datasets/NDD20"), subdataset="below", reset=False
     )
-    for ind in range(len(dataset)):
+    breakpoint()
+    for ind in range(16, len(dataset)):
         img, mask = dataset.get_img_mask(ind)
         img.save(f"img_{ind}.png")
         mask.save(f"mask_{ind}.png")
