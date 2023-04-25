@@ -1,5 +1,5 @@
 from torch import log, nanmean
-import torch
+import json
 from torchvision.transforms import ToTensor
 import matplotlib.pyplot as plt
 import tqdm
@@ -9,7 +9,7 @@ from torchvision.ops import sigmoid_focal_loss
 from torch.nn import MSELoss, L1Loss
 from pathlib import Path
 
-from segmentation_datasets.ndd20 import NDD20DataModule, NDD20Dataset
+from segmentation_datasets.ndd20 import NDD20Dataset
 from config import DATA_DIR
 
 def mseloss(y_hat, y):
@@ -208,10 +208,7 @@ def visualize_results_precrecspec(results):
     plt.savefig('results_precrecspec_2.png')
     return thresholds[best_threshold_ind]
 
-    
-
-
-if __name__ == "__main__":
+def report_ndd20():
     results = evaluate_ndd20_predictions()
     visualize_results_cross_correlation(results)
     perthreshresults = evaluate_ndd20_predictions(per_threshold=True)
@@ -221,3 +218,13 @@ if __name__ == "__main__":
     print(f"Mean MAE: {mean_mae:.3f}")
     mean_best_iou = np.mean([perthreshresult[best_thresh]['iou'] for perthreshresult in perthreshresults])
     print(f"Mean IoU: {mean_best_iou:.3f}")
+    with open("results_ndd20.json", "w") as f:
+        json.dump({
+            "best_threshold": best_thresh,
+            "mean_mae": mean_mae,
+            "mean_best_iou": mean_best_iou,
+            }, f, indent=4)
+
+
+if __name__ == "__main__":
+    report_ndd20()
