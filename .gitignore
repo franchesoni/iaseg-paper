@@ -8,3 +8,4 @@ weights/
 runs/
 checkpoints/
 lightning_logs/
+config_index.py

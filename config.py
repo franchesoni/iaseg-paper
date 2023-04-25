@@ -1,4 +1,6 @@
 from pathlib import Path
+from config_index import config_index
+config_name = ["franco", "weird", "irrelevant", "jeanzay"][config_index]
 if config_name == "irrelevant":
     DATA_DIR = Path('/home/franchesoni/adisk/datasets')
 elif config_name == "weird":
