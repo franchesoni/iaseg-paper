@@ -1,7 +1,20 @@
 from pathlib import Path
-DATA_DIR = Path('/home/franchesoni/adisk/datasets')
+if config_name == "irrelevant":
+    DATA_DIR = Path('/home/franchesoni/adisk/datasets')
+elif config_name == "weird":
+    DATA_DIR = Path("/home/franchesoni/adisk/datasets/iaseg-paper")
+elif config_name == "jeanzay":
+    DATA_DIR = Path('/gpfsscratch/rech/chl/uyz17rc/data/iaseg-paper')
+
+
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 NDD20_DIR = DATA_DIR / "NDD20"
+with open("segmentation_datasets/ndd20.sh", "r+") as f:
+    contents = f.read()
+    f.seek(0)
+    f.write(f'DATASETS_DIR="{str(NDD20_DIR)}"\n' + contents)
+    f.close()
+
 DOWNLOAD_IF_NEEDED = True
 SEED = 42
 SAM_VITL_PATH = Path("weights/sam_vit_l_0b3195.pth")
