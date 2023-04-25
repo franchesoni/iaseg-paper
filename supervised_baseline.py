@@ -37,7 +37,7 @@ class Segmentator(pl.LightningModule):
         self.log("val/loss", loss)
         for metric_name in reg_metrics:
             self.log(f"val/{metric_name}", reg_metrics[metric_name](y_hat, y))
-        cls_res = get_average_results(y_hat=torch.sigmoid(y_hat), y=y, n_thresholds=10)
+        cls_res = get_average_results(y_hat=torch.sigmoid(y_hat).cpu(), y=y.cpu(), n_thresholds=10)
         self.log_dict({f"val/{key}":value for key, value in cls_res.items()}, prog_bar=True)
         return loss
 
@@ -67,7 +67,7 @@ def run_segmentator(mode='train'):
         segmentator = Segmentator()
         trainer = pl.Trainer(
             log_every_n_steps=1,
-            val_check_interval=1,
+            val_check_interval=50,
             # accelerator="cpu",
             max_epochs=24,
             fast_dev_run=False,
